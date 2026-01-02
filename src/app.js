@@ -20,4 +20,10 @@ app.use(express.urlencoded({extended: true, limit: process.env.REQUEST_LIMIT}))
 //configure the request of body (like form)
 app.use(cookieParser());
 
+
+//importing all the routes
+import userRouter from "./Routes/user.routes.js"
+
+app.use("/api/v1/users",userRouter)  //route is seperated, so it has to be used as middleware
+
 export default app;
