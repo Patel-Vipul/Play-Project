@@ -51,11 +51,23 @@ const userSchema = new mongoose.Schema({
     timestamps : true
 })
 
-//middleware:  to encrypt(hash) the password
-userSchema.pre("save", async function (next) {
-    if(!this.isModified("password")) return next()
+//middleware:  to encrypt(hash) the password [in the latest version of moongoose try-catch block is handled automatically]
+// userSchema.pre("save", async function (next) {
+//     try {
+//         if(!this.isModified("password")) return next();
+        
+//         this.password = await bcrypt.hash(this.password, 10);
+//         next()
+//     } catch (error) {
+//         console.log("Something went wrong on password hashing")
+//     }
+// })  
+
+//middleware: to encrypt(hash) the password
+userSchema.pre("save", async function () {
+    if(!this.isModified("password")) return;
+    
     this.password = await bcrypt.hash(this.password, 10);
-    next()
 })
 
 //defined/custom method to check the hash password

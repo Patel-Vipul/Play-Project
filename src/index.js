@@ -4,7 +4,7 @@ import connectDB from "./DB/databaseConnection.js"
 import app from "./app.js"
 
 dotenv.config({
-    path: "./env",
+    path: "./.env",
     override: true,
     quiet: true
 })
