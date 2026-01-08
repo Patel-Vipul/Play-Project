@@ -4,6 +4,22 @@ import apiError from "../Utils/apiError.js";
 import { uploadFilesOnCloudinary } from "../Utils/cloudinary.js";
 import apiResponce from "../Utils/apiResponse.js";
 
+const generateAccessAndRefreshToken = async(userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+        
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave : false})
+
+        return {accessToken, refreshToken}
+
+    } catch (error) {
+        throw new apiError(500, "Something went wrong while generating refresh token and access token")
+    }
+}
+
 const registerUser = asyncHandler( async(req, res) => {
 
     // get user detail from frontend/postman
@@ -75,7 +91,91 @@ const registerUser = asyncHandler( async(req, res) => {
     return res.status(201).json(
         new apiResponce(200, createdUser, "User Created Successfully")
     )
+})
+
+const loginUser = asyncHandler( async (req,res) => {
+    //req.body => data
+    const {userName, email, password} = req.body;
+    
+    //check if username or email is sent or not
+    if(!userName && !email){
+        throw new apiError(401, "login credentials are required")
+    }
+
+    //find the user
+    const user = await User.findOne({
+        $or : [{email}, {userName}]
+    }
+    )
+
+    console.log(user);
+
+    if(!user){
+        throw new apiError(404,"User doesnot exists")
+    }
+
+    //check the password
+    const isValidPassword = await user.isPasswordCorrect(password);
+    if(!isValidPassword) {
+        throw new apiError(401,"Invalid user Credentials")
+    }
+
+    //generate access token and refresh token
+    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id);
+
+    //send access token through cookies
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    const options = {    //to disable the editing of cookies from else-where
+        httpOnly : true,
+        secure : true
+    }
+
+    return res.
+    status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new apiResponce(
+            200,
+            {
+                user : loggedInUser, accessToken, refreshToken
+            },
+            "User Logged in Successfully!"
+        )
+    )
 
 })
 
-export default registerUser;
+const logoutUser = asyncHandler(async(req,res) => {
+    //update/remove refresh token
+    await User.findByIdAndUpdate(req.user._id,
+        {
+            $set : {
+                refreshToken : undefined
+            }
+        },
+        {
+            new : true
+        }
+    )
+    //clear cookies
+
+    const options = {
+        httpOnly : true,
+        secure : true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken",options)
+    .json(new apiResponce(200,{}, "User LoggedOut Successfully!"))
+    
+})
+
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser
+};
