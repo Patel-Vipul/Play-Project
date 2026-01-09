@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser"
 
 const app = express();
 
-//use object is used to configure middleware
+//"use" object is used to configure middleware
 //it will configure whether the request on backend is valid or not
 app.use(cors({
     origin: process.env.CORS_ORIGIN,

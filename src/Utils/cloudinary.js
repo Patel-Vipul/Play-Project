@@ -7,6 +7,7 @@ cloudinary.config({
     api_secret: `${process.env.CLOUDINARY_API_SECRET}`,
 });
 
+//to upload files on cloudinary
 const uploadFilesOnCloudinary = async (filePath) => {
     try {
         if (!filePath) return null;
@@ -25,4 +26,27 @@ const uploadFilesOnCloudinary = async (filePath) => {
     }
 };
 
-export { uploadFilesOnCloudinary };
+//to delete/destroy file on cloudinary(we have to use public id of that file)
+const extractPublicId = (cloudinaryURL) => {
+    const parts = cloudinaryURL.split("/")
+    const fileWithExtension = parts[parts.length-1]
+    const publicId = fileWithExtension.split(".")[0]
+    return publicId
+}
+
+const deleteFromCloudinary = async (cloudinaryURL) => {
+    try {
+        const publicId = extractPublicId(cloudinaryURL)
+        const response = await cloudinary.uploader.destroy(publicId);
+
+        if(response){
+            console.log("File deleted from cloudinary")
+            return response
+        }
+    } catch (error) {
+        console.log("Error deleting from cloudinary ",error?.messgae)
+    }
+}
+
+
+export { uploadFilesOnCloudinary,deleteFromCloudinary };

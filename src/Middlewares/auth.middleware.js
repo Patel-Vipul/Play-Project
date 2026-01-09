@@ -4,7 +4,7 @@ import asyncHandler from "../Utils/asyncHandler.js";
 import { User } from "../Models/User.model.js";
 
 
-const verifyJWT = asyncHandler( async (req,res,next) => {
+const verifyJWT = asyncHandler( async (req,_,next) => {
     try {
         const accessToken = req.cookies?.accessToken || req.header("Authorization").replace("Bearer ","");
     
@@ -14,7 +14,7 @@ const verifyJWT = asyncHandler( async (req,res,next) => {
     
         const decodedAccessToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET,)
     
-        const user = User.findById(decodedAccessToken?._id).select("-password -refreshToken")
+        const user = await User.findById(decodedAccessToken?._id).select("-password -refreshToken")
     
         if(!user){
             throw new apiError(401,"Unvalid Access Token!")
