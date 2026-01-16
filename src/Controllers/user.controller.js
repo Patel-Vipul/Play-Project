@@ -4,6 +4,7 @@ import apiError from "../Utils/apiError.js";
 import { deleteFromCloudinary, uploadFilesOnCloudinary } from "../Utils/cloudinary.js";
 import apiResponce from "../Utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import { subscribe } from "diagnostics_channel";
 
 const options = {    //to disable the editing of cookies from else-where
     httpOnly : true,
@@ -400,6 +401,84 @@ const deleteUserAccount = asyncHandler( async(req, res) => {
     )
 })
 
+const userChannelProfile = asyncHandler(async (req, res) => {
+
+    const {userName} = req?.params;
+
+    if(!userName?.trim()) {
+        throw new apiError("Username is missing!")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match : {
+                userName : userName.toLowerCase()
+            }
+        },
+        {
+            $lookup : {
+                from : "subscriptions",
+                localField : "_id",
+                foreignField : "channel",
+                as : "subscribers"
+            }
+        },
+        {
+            $lookup : {
+                from : "subscriptions",
+                localField : "_id",
+                foreignField : "subscriber",
+                as : "subscribedTo"
+            }
+        },
+        {
+            $addFields : {
+                subscriberCount : {
+                    $size : "$subscibers"
+                },
+                subscribedToCount : {
+                    $size : "$subscribedTo"
+                },
+                isSubscibed : {
+                    $cond : {
+                        if : {
+                            $in :  [req?.user?._id, "$subscriber.subscriber"]
+                        },
+                        then : true,
+                        else : false
+                    }
+                }
+            }
+        },
+        {
+            $project : {
+                fullName : 1,
+                userName : 1,
+                email : 1,
+                avatar: 1,
+                coverImage : 1,
+                subscriberCount : 1,
+                subscribedToCount: 1,
+                isSubscibed: 1,
+                createdAt: 1
+            }
+        }
+    ])
+
+    console.log(channel);
+
+    if(!channel?.length){
+        throw new apiError(404, "channel doesnot exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new apiResponce(200, channel[0], "user channel fetched successfully!")
+    )
+
+})
+
 export {
     registerUser,
     loginUser,
@@ -410,5 +489,6 @@ export {
     updatAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    deleteUserAccount
+    deleteUserAccount,
+    userChannelProfile
 };
