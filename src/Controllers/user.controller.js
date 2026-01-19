@@ -5,6 +5,8 @@ import { deleteFromCloudinary, uploadFilesOnCloudinary } from "../Utils/cloudina
 import apiResponce from "../Utils/apiResponse.js";
 import jwt from "jsonwebtoken"
 import { subscribe } from "diagnostics_channel";
+import { threadId } from "worker_threads";
+import mongoose from "mongoose";
 
 const options = {    //to disable the editing of cookies from else-where
     httpOnly : true,
@@ -401,18 +403,17 @@ const deleteUserAccount = asyncHandler( async(req, res) => {
     )
 })
 
-const userChannelProfile = asyncHandler(async (req, res) => {
+const getCurrentUserChannel = asyncHandler( async(req, res) => {
+    const {userName} = req.params;
 
-    const {userName} = req?.params;
-
-    if(!userName?.trim()) {
-        throw new apiError("Username is missing!")
+    if(!userName?.trim()){
+        throw new apiError(400,"Username is required!")
     }
 
     const channel = await User.aggregate([
         {
             $match : {
-                userName : userName.toLowerCase()
+                userName : userName?.toLowerCase()
             }
         },
         {
@@ -431,18 +432,19 @@ const userChannelProfile = asyncHandler(async (req, res) => {
                 as : "subscribedTo"
             }
         },
+        //this pipeline will add more fields to user-model
         {
             $addFields : {
                 subscriberCount : {
-                    $size : "$subscibers"
+                    $size : "$subscribers"
                 },
-                subscribedToCount : {
+                channelSubscribedTo : {
                     $size : "$subscribedTo"
                 },
-                isSubscibed : {
+                isSubscribed : {
                     $cond : {
                         if : {
-                            $in :  [req?.user?._id, "$subscriber.subscriber"]
+                            $in : [req.user?._id, "$subscribers.subscriber"],
                         },
                         then : true,
                         else : false
@@ -452,29 +454,88 @@ const userChannelProfile = asyncHandler(async (req, res) => {
         },
         {
             $project : {
-                fullName : 1,
                 userName : 1,
                 email : 1,
-                avatar: 1,
+                fullName : 1,
+                avatar : 1,
                 coverImage : 1,
                 subscriberCount : 1,
-                subscribedToCount: 1,
-                isSubscibed: 1,
-                createdAt: 1
+                channelSubscribedTo : 1,
+                isSubscribed : 1,
+                createdAt : 1
             }
         }
     ])
 
-    console.log(channel);
 
     if(!channel?.length){
-        throw new apiError(404, "channel doesnot exists")
+        throw new apiError(404, "Channel doesnot exists!")
     }
+
+    console.log("channel:= ", channel)
 
     return res
     .status(200)
     .json(
-        new apiResponce(200, channel[0], "user channel fetched successfully!")
+        new apiResponce(200,channel[0],"Current user Channel Fetched Successfully!")
+    )
+})
+
+const getWatchHistory = asyncHandler( async(req, res) => {
+
+    const user = await User.aggregate([
+        {
+            $match : {
+                _id : new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup : {
+                from : "videos",
+                localField : "watchHistory",
+                foreignField : "_id",
+                as : "WatchHistory",
+                pipeline : [
+                    {
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField : "_id",
+                            as : "owner",
+                            pipeline : [
+                            {
+                                $project : {
+                                    fullName : 1,
+                                    userName : 1,
+                                    avatar : 1
+                                }
+                            }
+                        ]
+                        },
+                    },
+                    {
+                        $addFields : {
+                            owner : {
+                                $first : "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+    console.log(user)
+    console.log(user[0].watchHistory)
+
+    if(!user){
+        throw new apiError(400, "User can't be found")
+    }
+
+
+    return res
+    .status(200)
+    .json(
+        new apiResponce(200, user[0], "watch history fetched successfully!")
     )
 
 })
@@ -490,5 +551,6 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     deleteUserAccount,
-    userChannelProfile
+    getCurrentUserChannel,
+    getWatchHistory
 };

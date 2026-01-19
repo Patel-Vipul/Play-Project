@@ -1,7 +1,7 @@
 import { Router } from "express"
-import { loginUser, logoutUser, registerUser,refreshAccessToken, changeCurrentPassword, getCurrentUser, updatAccountDetails, updateUserAvatar, deleteUserAccount, updateUserCoverImage }  from "../Controllers/user.controller.js";
 import upload from "../Middlewares/multer.middleware.js";
 import verifyJWT from "../Middlewares/auth.middleware.js";
+import { loginUser, logoutUser, registerUser,refreshAccessToken, changeCurrentPassword, getCurrentUser, updatAccountDetails, updateUserAvatar, deleteUserAccount, updateUserCoverImage, getCurrentUserChannel, getWatchHistory }  from "../Controllers/user.controller.js";
 
 const router = Router();
 
@@ -42,30 +42,30 @@ router.route("/getCurrentUser").get(
     getCurrentUser
 )
 
-router.route("/updateAccountDetails").post(
+router.route("/updateAccountDetails").patch(
     verifyJWT,
     updatAccountDetails
 )
 
-router.route("/updateUserAvatar").post(
+router.route("/updateUserAvatar").patch(
+    verifyJWT,
     upload.fields([
         {
             name : "updatedAvatar",
             maxCount : 1
         }
     ]),
-    verifyJWT,
     updateUserAvatar
 )
 
-router.route("/updateUserCoverImage").post(
+router.route("/updateUserCoverImage").patch(
+    verifyJWT,
     upload.fields([
         {
             name : "updatedCoverImage",
             maxCount : 1
         }
     ]),
-    verifyJWT,
     updateUserCoverImage
 )
 
@@ -73,5 +73,9 @@ router.route("/deleteUserAccount").delete(
     verifyJWT,
     deleteUserAccount
 )
+
+router.route("/channel/:userName").get(verifyJWT, getCurrentUserChannel)
+
+router.route("/watchHistory").get(verifyJWT,getWatchHistory)
 
 export default router;
