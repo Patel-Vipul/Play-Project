@@ -23,7 +23,9 @@ app.use(cookieParser());
 
 //importing all the routes
 import userRouter from "./Routes/user.routes.js"
+import tweetRouter from "./Routes/tweet.route.js"
 
 app.use("/api/v1/users",userRouter)  //route is seperated, so it has to be used as middleware
+app.use("/api/v1/tweet",tweetRouter)
 
 export default app;
